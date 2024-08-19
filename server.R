@@ -1,37 +1,75 @@
+
 library(shiny)
 library(reticulate)
-library(webshot)
 
-# Configurar reticulate para usar Python
-use_python("C:/Users/andre/AppData/Local/Programs/Python/Python312/python.exe")
+source_python("algoritmos.py")
 
-# Cargar el script de Python
-source_python("C:/Users/andre/Downloads/Lab 1 Andrea Hernandez/bisection_newton.py")
+#tableOut, soluc = newtonSolverX(-5, "2x^5 - 3", 0.0001)
 
-# Verificar instalación de phantomjs
-if (!webshot::is_phantomjs_installed()) {
-  webshot::install_phantomjs()
-}
-
-# Definir la lógica del servidor
 shinyServer(function(input, output) {
-  observeEvent(input$capture, {
-    # Capturar la pantalla de la aplicación
-    webshot::webshot("http://127.0.0.1:7808", file = "screenshot.png")
-  })
-  
-  output$bisection_result <- renderTable({
-    # Asegúrate de que la función f se define en el entorno de R
-    f <- function(x) { x^2 + exp(-x) }
-    bisection <- bisection_method(f, input$a, input$b, input$tol)
-    bisection[[2]]
-  })
-  
-  output$newton_result <- renderTable({
-    # Asegúrate de que la función f y df se definen en el entorno de R
-    f <- function(x) { x^2 + exp(-x) }
-    df <- function(x) { 2*x - exp(-x) }
-    newton <- newton_raphson_method(f, df, input$x0, input$tol)
-    newton[[2]]
-  })
+    
+    #Evento y evaluación de metodo de newton para ceros
+    newtonCalculate<-eventReactive(input$nwtSolver, {
+        inputEcStr<-input$ecuacion[1]
+        print(inputEcStr)
+        initVal<-input$initVal[1]
+        error<-input$Error[1]
+        #outs<-add(initVal, error)
+        outs<-newtonSolverX(initVal, inputEcStr, error)
+        outs
+    })
+    
+    #Evento y evaluación de diferencias finitas
+    diferFinitCalculate<-eventReactive(input$diferFinEval, {
+        inputEcStr<-input$difFinEcu[1]
+        valX<-input$valorX[1]
+        h<-input$valorH[1]
+        outs<-evaluate_derivate_fx(inputEcStr, valX, h)
+        as.character(outs)
+    })
+    
+    
+    #REnder metodo de Newton
+    output$salidaTabla<-renderTable({
+        newtonCalculate()
+    })
+    
+    #Render Diferncias Finitas
+    output$difFinitOut<-renderText({
+        diferFinitCalculate()
+    })
+    
+    # Evento y evaluación de método de Bisección
+    bisectionCalculate <- eventReactive(input$bisectSolver, {
+      inputEcStr <- input$ecuacionBisect[1]
+      initA <- input$initA[1]
+      initB <- input$initB[1]
+      error <- input$ErrorBisect[1]
+      k_max <- input$kMax[1]
+      
+      outs <- bisectionSolverX(initA, initB, inputEcStr, error, k_max)
+      outs
+    })
+    
+    # Render método de Bisección
+    output$salidaBiseccion <- renderTable({
+      bisectionCalculate()
+    })
+    
+    newtonCalculate <- eventReactive(input$nwtSolver, {
+      inputEcStr <- input$ecuacion[1]
+      initVal <- input$initVal[1]
+      error <- input$Error[1]
+      k_max <- input$kMaxNewton[1]
+      
+      outs <- newtonSolverX(initVal, inputEcStr, error, k_max)
+      outs
+    })
+    
+    # Render método de Newton-Raphson
+    output$salidaTabla <- renderTable({
+      newtonCalculate()
+    })
+    
+    
 })
